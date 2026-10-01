@@ -24,3 +24,10 @@ ble_peripheral_plus (peripheral), cryptography (Ed25519).
 
 ## Status
 In development. Planning and documentation are in the course Kreo PM project.
+
+## Branching
+- `main` holds checked releases only.
+- `develop` integrates finished work for the next release.
+- Each task gets a `feature/HAMZA-N-short-name` branch created from `develop`
+  and merged back into `develop` when its checks pass.
+- `develop` is merged into `main` only after the release checks.
