@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:beaconq/logic/claim_serializer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
