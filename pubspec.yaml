@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_foreground_task: ^11.0.3
   audioplayers: ^6.8.1
   flutter_blue_plus: ^2.3.13
   ble_peripheral_plus: ^2.5.4
