@@ -10,7 +10,8 @@ class BleIds {
   // have to be valid hex — Android parses them strictly, so a "readable"
   // UUID with letters like q or u in it crashes on startup.
   static const String serviceUuid = '8af39807-dab8-49da-815c-081153d5895e';
-  static const String sessionInfoChar = 'dab963c7-3500-4d83-ad7e-6ed1e7665f42';
+  // dab963c7-3500-4d83-ad7e-6ed1e7665f42 was the sessionInfo characteristic.
+  // It was never used and has been removed; do not reuse the UUID.
   static const String claimRxChar = '27c2ff8b-54b0-4b2d-b7eb-5fb0032170ae';
   static const String snapshotTxChar = '7f577651-3489-4d0a-8c18-e3d285fbc79a';
   static const String heartbeatRxChar = 'd94af91a-41f3-45da-8ea6-a65d53a70b43';

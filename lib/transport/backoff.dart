@@ -54,24 +54,17 @@ class Backoff {
     Future<void> Function(Duration)? sleep,
   }) async {
     final wait = sleep ?? (d) => Future<void>.delayed(d);
-    Object? lastError;
 
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       if (attempt > 1) await wait(delayFor(attempt, rng));
       try {
         final result = await action(attempt);
         if (result != null) return result;
-      } catch (e) {
-        lastError = e;
+      } catch (_) {
+        // A refused or dropped connection is treated like a null result:
+        // wait and try again.
       }
-    }
-    if (lastError != null) {
-      // Kept so the caller can say what actually went wrong, instead of
-      // reporting a timeout for what was really a refusal.
-      lastFailure = lastError;
     }
     return null;
   }
-
-  static Object? lastFailure;
 }

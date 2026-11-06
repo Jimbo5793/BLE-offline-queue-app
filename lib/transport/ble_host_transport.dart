@@ -51,10 +51,6 @@ class BleHostTransport implements MeshTransport {
   /// anyone had arrived and would broadcast to nobody.
   final _subscribed = <String>{};
 
-  /// Android only. Used to tidy up as soon as a device disconnects, instead
-  /// of waiting for it to unsubscribe, which might never happen.
-  final _connected = <String>{};
-
   TransportState _current = TransportState.idle;
 
   @override
@@ -70,7 +66,6 @@ class BleHostTransport implements MeshTransport {
   /// it stays right even while an attendee's phone is locked.
   @override
   Set<String> get peers => Set.unmodifiable(_subscribed);
-  Set<String> get connectedCentrals => Set.unmodifiable(_connected);
 
   void _set(TransportState s) {
     _current = s;
@@ -213,7 +208,6 @@ class BleHostTransport implements MeshTransport {
             // for a moment can just fetch the current state instead of
             // waiting for an update that might not arrive in time.
             _characteristic(BleIds.snapshotTxChar, read: true, notify: true),
-            _characteristic(BleIds.sessionInfoChar, read: true, notify: true),
           ],
         ),
       );
@@ -369,14 +363,12 @@ class BleHostTransport implements MeshTransport {
     }
   }
 
+  /// Android only. Tidies up as soon as a device disconnects, instead of
+  /// waiting for it to unsubscribe, which might never happen.
   void _onConnectionChanged(String deviceId, bool connected) {
-    if (connected) {
-      _connected.add(deviceId);
-    } else {
-      _connected.remove(deviceId);
-      _subscribed.remove(deviceId);
-      _mtu.remove(deviceId);
-      _reassemblers.remove(deviceId);
-    }
+    if (connected) return;
+    _subscribed.remove(deviceId);
+    _mtu.remove(deviceId);
+    _reassemblers.remove(deviceId);
   }
 }
