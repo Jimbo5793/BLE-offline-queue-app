@@ -660,27 +660,32 @@ class HostSessionService {
     _presence.putIfAbsent(userId, () => PresenceSample(attendeeId: userId));
     _lastBeatElapsed[userId] = _stopwatch.elapsedMilliseconds;
 
-    await db.insert(
-      'attendance_entries',
-      AttendanceEntry(
-        id: _uuid.v4(),
-        sessionId: s.id,
-        attendeeId: userId,
-        joinedAt: now,
-        lastSeenAt: now,
-      ).toMap(),
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    // Database writes go through the same serializer as queue changes, so a
+    // join never blocks behind an open claim transaction.
+    final rejoining = _departed.remove(userId);
+    await logic.serialized(() async {
+      await db.insert(
+        'attendance_entries',
+        AttendanceEntry(
+          id: _uuid.v4(),
+          sessionId: s.id,
+          attendeeId: userId,
+          joinedAt: now,
+          lastSeenAt: now,
+        ).toMap(),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
 
-    // Back after leaving. The insert above does nothing because their row
-    // already exists, so we have to clear the "left" time ourselves —
-    // otherwise they'd stay off the list despite just rejoining. Their
-    // original join time is kept, which is what the export wants.
-    if (_departed.remove(userId)) {
-      await db.update('attendance_entries', {'left_at': null},
-          where: 'session_id = ? AND attendee_id = ?',
-          whereArgs: [s.id, userId]);
-    }
+      // Back after leaving. The insert above does nothing because their row
+      // already exists, so we have to clear the "left" time ourselves —
+      // otherwise they'd stay off the list despite just rejoining. Their
+      // original join time is kept, which is what the export wants.
+      if (rejoining) {
+        await db.update('attendance_entries', {'left_at': null},
+            where: 'session_id = ? AND attendee_id = ?',
+            whereArgs: [s.id, userId]);
+      }
+    });
 
     await _send(
       to: msg.peerId,
@@ -823,16 +828,17 @@ class HostSessionService {
 
     final s = _session;
     if (s != null && !_stopped) {
-      await db.update(
-        'attendance_entries',
-        {
-          'last_seen_at': DateTime.now().millisecondsSinceEpoch,
-          'proximity': e.sample.state.name,
-          'rssi_ema': e.sample.rssiEma,
-        },
-        where: 'session_id = ? AND attendee_id = ?',
-        whereArgs: [s.id, userId],
-      );
+      final seenAt = DateTime.now().millisecondsSinceEpoch;
+      await logic.serialized(() => db.update(
+            'attendance_entries',
+            {
+              'last_seen_at': seenAt,
+              'proximity': e.sample.state.name,
+              'rssi_ema': e.sample.rssiEma,
+            },
+            where: 'session_id = ? AND attendee_id = ?',
+            whereArgs: [s.id, userId],
+          ));
     }
 
     // Reply with the current state, so one connection covers both the
@@ -887,12 +893,13 @@ class HostSessionService {
     _lastBeatElapsed.remove(userId);
     _peerToUser.removeWhere((_, v) => v == userId);
 
-    await db.update(
-      'attendance_entries',
-      {'left_at': DateTime.now().millisecondsSinceEpoch},
-      where: 'session_id = ? AND attendee_id = ?',
-      whereArgs: [s.id, userId],
-    );
+    final leftAt = DateTime.now().millisecondsSinceEpoch;
+    await logic.serialized(() => db.update(
+          'attendance_entries',
+          {'left_at': leftAt},
+          where: 'session_id = ? AND attendee_id = ?',
+          whereArgs: [s.id, userId],
+        ));
 
     await _broadcast();
 
