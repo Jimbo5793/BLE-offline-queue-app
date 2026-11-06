@@ -76,7 +76,7 @@ class SessionForegroundService {
   }
 
   static String get _title =>
-      _held.length > 1 ? 'Queue is running' : 'Queue — ${_held.keys.first}';
+      _held.length > 1 ? 'BeaconQ is running' : 'BeaconQ — ${_held.keys.first}';
 
   static String get _text => _held.values.join(' · ');
 
